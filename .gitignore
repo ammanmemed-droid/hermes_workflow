@@ -3,6 +3,7 @@ auth.json
 *.auth.json
 .env
 .env.*
+*.env
 *.lock
 
 # hermes runtime state (not workflow assets)
