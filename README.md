@@ -19,16 +19,14 @@ Codex 方案(W1) → Claude Code 开发(W2) → Codex 审查(W3) → Claude Code
 
 ## 新机器恢复步骤
 
+👉 **完整换机手册见 [docs/MIGRATION.md](docs/MIGRATION.md)**（10 分钟恢复）
+
+速览：
 1. 安装 Hermes：`curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash`
-2. 安装编码 CLI 并登录：
-   - Codex：`npm install -g @openai/codex`（或官方安装），登录 `~/.codex/auth.json`
-   - Claude Code：`npm install -g @anthropic-ai/claude-code`，配置 `ANTHROPIC_AUTH_TOKEN`（当前指向 `https://api.deepseek.com/anthropic`）
+2. 安装编码 CLI 并登录（Codex：`npm i -g @openai/codex` + login；Claude Code：`npm i -g @anthropic-ai/claude-code` + ANTHROPIC_AUTH_TOKEN 指向 DeepSeek 端点）
 3. `git clone https://github.com/ammanmemed-droid/hermes_workflow.git`
-4. 拷贝三个目录到 `$LOCALAPPDATA/hermes/`（Windows）：
-   ```
-   cp -r skills/ memories/ kanban/ "$LOCALAPPDATA/hermes/"
-   ```
-5. 完成，新会话直接说「用 codex-pipeline 跑 <需求>」即可。
+4. 拷贝 `skills/ memories/ kanban/` 到 `$LOCALAPPDATA/hermes/`（Windows）或 `~/.hermes/`（macOS/Linux）
+5. 重启 Hermes，说「用 codex-pipeline 跑 <需求>」
 
 ## 安全说明
 
