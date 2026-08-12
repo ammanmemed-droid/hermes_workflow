@@ -1,149 +1,113 @@
 ---
 name: codex-pipeline
-description: "Codex方案→Claude开发→Codex审查→Claude测试 + 看板/skills沉淀."
-version: 1.2.0
+description: "Use when orchestrating tiered backend development with Codex and Claude."
+version: 2.0.0
 author: Hermes Agent
 license: MIT
 platforms: [windows, linux, macos]
 metadata:
   hermes:
-    tags: [Codex, Claude-Code, Orchestration, Pipeline, Kanban, Code-Review, Testing, Skills]
-    related_skills: [codex, claude-code, hermes-agent]
+    tags: [Codex, Claude-Code, Orchestration, Pipeline, Kanban, Review, Testing]
+    related_skills: [backend-project-delivery, codex, claude-code, hermes-agent]
 ---
 
-# Codex + Claude Code 混合四阶段流水线（带进度看板）
+# 分级 Codex + Claude Code 开发流水线
 
-用 Hermes 调度两个编码代理 CLI，按「Codex 方案 → Claude Code 开发 → Codex 审查 → Claude Code 测试」四阶段流水线完成开发，全程维护**双看板进度跟踪**（项目内 PROGRESS.md + hermes kanban），每轮结束做项目级 skills 沉淀。Hermes 是总调度：起窗口、传话、更新看板、收尾沉淀。
+Hermes 先使用 `backend-project-delivery` 判断风险与范围，再选择最小必要流程。BPD 是分级权威；本 Skill 只负责编排执行，不得因多代理、Superpowers、OpenSpec 或其他 Skill 而扩大任务等级、修改范围或验证范围。
 
-## When to use
+## 优先级
 
-- 用户要求按多窗口流水线开发，混合使用 codex 和 claude code
-- 用户提到「codex 输出方案」「claude code 写代码」「codex 审查」「claude code 测试」「进度看板」「待办」「已完成」
-- 流水线：方案制定、开发、审查、测试分窗口，带进度跟踪
+平台强制规则 > 用户当前明确指令 > 当前作用域仓库指令 > BPD 分级和范围上限 > 本流水线 > Superpowers/OpenSpec/TDD/调试及领域 Skill。存在冲突时说明冲突，不静默执行重流程。
 
-## Prerequisites
+## 四档路由
 
-- **Codex CLI**（本机：`~/.codex/.sandbox-bin/codex.exe`，**不在 PATH**，全路径调用）
-- **Claude Code CLI**（本机：npm 全局 `claude` 2.1.x，在 PATH；auth 走 `ANTHROPIC_AUTH_TOKEN` → `https://api.deepseek.com/anthropic` 兼容端点）
-- **hermes kanban**（`hermes kanban init` 一次性初始化；看板按项目分 board）
-- 目标目录必须是 git 仓库
-- codex 调用必须 `pty=true`；claude 用 `-p` 打印模式不需要 pty
+| 档位 | 判断 | 默认执行 |
+|---|---|---|
+| L1 | 局部、机械、可逆，不改变业务/数据/权限语义 | Hermes 直接精准搜索、最小修改、旧值检查、diff、最多一个快速检查；不启动流水线 |
+| L2-Lite | 小 Bug、小功能或少量业务逻辑；范围明确、复杂度低、通常少量文件 | 简短方案 → 用户确认 → 单代理开发 → Hermes diff 与针对性测试 → 用户验收 |
+| L2-Full | 复杂逻辑、影响较广、跨核心模块或独立审查价值明显 | W1 Codex → 用户确认 → W2 Claude → W3 Codex → 修复确认门 → W4 Claude |
+| L3 | 生产服务发现、公开契约、安全/权限、数据迁移、不可逆操作 | 先取得升级授权，再按风险执行完整分析、兼容、验证和分段授权 |
 
-## ⛔ Git 提交铁律（用户明确要求）
+任务是 Bug、新功能或跨模块修改，并不自动等于 L2-Full。优先选择 L2-Lite；只有证据支持时才建议 Full。
 
-**流水线全程绝不自动 `git commit`** —— 包括 PROGRESS.md 和所有代码产物。代理窗口的产出留在工作区，等**用户自己验证功能没问题后，用户明确说"提交"**，才执行 commit（用户验证通过后通常一次性提交代码 + PROGRESS.md）。
+## L1 快速通道
 
-## 双看板进度跟踪（每阶段必做）
+严格遵循 `backend-project-delivery` 的 L1 契约。禁止设计文档、完整计划、看板、需求矩阵、新增测试、全量回归、完整启动、多代理窗口和 Skill 沉淀。发现契约、多个消费者、生产服务发现、安全、数据或范围扩大信号时停止，合并为一次升级确认请求。
 
-### A. 项目内看板 `docs/PROGRESS.md`
-每阶段开始/结束由 Hermes 更新，模板：
+## L2-Lite
 
-```markdown
-# <项目名> 开发看板
+1. **简短方案：** 当前行为、目标行为、预计文件、验证范围、风险和非目标；在聊天中输出即可。
+2. **Gate 1：** 用户确认方案后才开发。
+3. **单代理开发：** 默认按任务选择 Hermes、Codex 或 Claude Code，只实施确认范围，不 commit。
+4. **过程确认：** 设计前提不成立、需改方案外文件、存在实质技术取舍、依赖/契约/Schema/权限/生产配置变化时立即暂停询问。
+5. **验证：** Hermes 检查 diff，运行目标行为/目标模块的针对性测试；无证据不跑全仓回归。
+6. **交付：** 给用户行为变化、文件、测试和剩余风险，等待验收与“提交”。
 
-## 📊 当前状态
-- 当前阶段：W3 代码审查（第 2 轮）｜ 进度：3/5 ｜ 更新：<时间>
+默认不建双看板、不单独开启审查窗口、不强制项目 Skill 沉淀。任务持续较长或遗漏风险明显时才启用看板。
 
-## ✅ 已完成
-- [x] W1 方案制定（第1轮）→ docs/design.md
-- [x] W2 代码开发（第1轮）→ commit 待用户确认
+## L2-Full
 
-## 🔄 进行中
-- [ ] W2 代码开发（第2轮）：<模块>
+### W1 Codex 方案
 
-## 📋 待办
-- [ ] W3 代码审查（第2轮）
-- [ ] W4 测试（第2轮）
-- [ ] 第2轮技能沉淀
-```
+使用 PATH 中 npm 稳定版 `codex`（当前 0.147.0），不要使用旧 `~/.codex/.sandbox-bin/codex.exe` alpha。方案包含目标/非目标、当前与目标行为、文件范围、决策、风险、验证和验收标准。默认简短；确需正式设计时才使用 Superpowers。OpenSpec 仅在用户要求正式规格/提案/治理，或已确认的契约、迁移、跨团队变更需要追踪时使用。
 
-更新时机（**按阶段粒度**，不用拆任务）：
-- 阶段启动 → 「待办→进行中」，刷新当前阶段/更新时间
-- 阶段完成（产出验证通过后）→ 「进行中→已完成」+ 一行产出摘要（产物路径/测试数/commit 状态）
-- 每轮结束 → 追加「技能沉淀」完成项
-- 用户可在预览面板 `open_preview docs/PROGRESS.md` 实时查看
+**Gate 1：方案完成后停止。必须由用户审核确认，才能移交 W2。**
 
-### B. hermes kanban 后端（机器可查）
+### W2 Claude Code 开发
+
+Claude Code只实施已确认方案，不 commit。开发中出现以下任一情况立即暂停：超范围文件、前提失效、多个实质方案、兼容策略、依赖升级、Schema/数据/权限、生产配置、删除或扩大重构、用户改动重叠。
+
+确认请求必须给出：证据、原方案、选项、推荐、影响；确认前不代替用户决定。
+
+### W3 Codex 审查
+
+审查未提交 diff，报告阻断/建议/风格及文件行号。代理自报必须由 Hermes 核实。
+
+**修复确认门：** 有阻断时先向用户提交问题证据和修复方案；用户确认后才回灌 W2。不得自动修复。修复后再复审。
+
+### W4 Claude Code 测试
+
+按证据选择目标行为、目标模块和必要直接消费者测试；无证据不默认全仓回归。Hermes 必须重跑关键命令验证。Python 项目测试清理 Hermes 注入的 `PYTHONPATH`：
+
 ```bash
-hermes kanban init                    # 一次性
-hermes kanban boards create <slug>    # 每个项目一个 board（如 repo 名）
-hermes kanban boards switch <slug>    # 切到项目板
-hermes kanban create "W1 方案制定 - <需求>" --body "<要点>" --workspace dir:<repo绝对路径>
-hermes kanban complete t_xxx          # 阶段完成
-hermes kanban comment t_xxx "产出：docs/design.md，3 模块"   # 留产出记录
-hermes kanban list                    # 查看
+env -u PYTHONPATH .venv/Scripts/python.exe -m pytest <target>
+# 或
+PYTHONPATH= uv run pytest <target>
 ```
-- 每阶段 = 一张卡（W1..W4 + 技能沉淀），阶段启动时 create（状态 ready），完成后 complete
-- 产出要点用 comment 留在卡上；`hermes kanban show t_xxx` 看历史
-- 状态机：todo → ready → running → review → blocked → done
 
-## Pipeline 五步
+准确标记证据等级：Mock/Fake、进程内 HTTP、契约 Stub、共享环境、类生产/生产。不得把低等级证据写成集成通过或可发布。
 
-### 0. 启动前准备
-- `git status` 确认工作区干净，脏则先 stash
-- 初始化看板：写 `docs/PROGRESS.md` 模板；`hermes kanban boards create <slug>` + switch（首次）
-- 约定产物：设计文档 `docs/design.md`、审查报告 `docs/review.md`、看板 `docs/PROGRESS.md`
-- 每个窗口独立后台会话：`terminal(command=..., workdir=<repo>, background=true, pty=true)`（claude -p 可不带 pty）；长任务 `notify_on_complete=true`
+## L3 与分段授权
 
-### 1. W1 方案制定 — Codex
-```bash
-~/.codex/.sandbox-bin/codex.exe exec --sandbox workspace-write \
-  "分析需求：<需求描述>。产出 docs/design.md：含目标、技术选型、模块拆分、接口设计、任务分解、验收标准。不要写业务代码。"
-```
-- 启动：看板 A/B 同步「W1 进行中」
-- 完成：读 docs/design.md 验证 → 看板「W1 已完成」→ 要点给用户确认后进 W2
+先使用 BPD 升级确认门。用户确认后按需加载服务发现、安全与数据、AI 系统等专项参考。只读分析、代码/配置修改、部署/灰度、不可逆生产操作分别授权；前一阶段授权不自动延伸。未满足外部门槛时报告“受阻”或 `integration_unverified`，不写“有条件通过”。
 
-### 2. W2 代码开发 — Claude Code
-```bash
-claude -p "按照 docs/design.md 实现<模块/功能>。遵循项目现有代码风格。实现完成**不要 commit**，停在工作区。" \
-  --allowedTools "Read,Edit,Write,Bash(git*),Bash(python*),Bash(pip*),Bash(npm*),Bash(uv*)" --max-turns 30
-```
-- 启动/完成同 W1 更新看板；完成后 `git status`/`git diff --stat` 验证改动在但**未提交**
+## Superpowers 与 OpenSpec
 
-### 3. W3 代码审查 — Codex
-```bash
-~/.codex/.sandbox-bin/codex.exe exec \
-  "审查工作区未提交改动（git diff），输出 docs/review.md：问题分级（阻断/建议/风格）、文件+行号+修改建议。"
-```
-- 阻断问题 → 回灌 W2：新 claude -p 窗口按 review 意见改 → 回 W3 复审直到通过；阻断期看板标 blocked
+- L1 不调用需求设计、完整计划、TDD、Superpowers 或 OpenSpec。
+- L2 只在任务确实匹配时按需使用 brainstorming、系统化调试、TDD、设计或计划执行。
+- OpenSpec 只在用户明确要求，或已确认的契约/迁移/跨团队变更需要可追踪规格时使用；L3 不自动等于 OpenSpec。
+- 专项 Skill 只补充方法，不能扩大 BPD 的范围上限。
 
-### 4. W4 测试 — Claude Code
-- 先由 Hermes 直接跑项目测试命令（快、省 token）；失败或补用例再交给 claude
-```bash
-claude -p "运行测试（<测试命令>），修复失败测试或补缺失用例，确保全部通过。不要 commit。" \
-  --allowedTools "Read,Edit,Write,Bash" --max-turns 20
-```
-- 验证：重跑测试全绿 → 看板 W4 完成
+## 看板策略
 
-### 5. 技能沉淀 + 进度简报（每轮必做）
-- 看板 A/B 同步「技能沉淀」完成项
-- `skill_manage` 创建/更新项目专属技能（`<repo名>-dev`，category 用项目名）：项目结构、构建/测试命令、风格约定、架构决策与理由、踩坑（→Pitfalls）、用户纠正（→立即写入）
-- 给用户**进度简报**：本轮各阶段产出、看板现状、下一步待办
-- **不 commit**，提醒用户自行验证，验证通过后说一声再提交
+- L1：不建看板。
+- L2-Lite：默认不建；持续较长或遗漏风险明显时使用简化 `docs/PROGRESS.md`。
+- L2-Full/L3：使用项目 `docs/PROGRESS.md` + Hermes Kanban，按阶段更新，不拆成细碎任务。
+- 人工 Gate 状态必须标记为 blocked/等待用户确认。
 
-## 并行与隔离
+## Git 铁律
 
-- 四阶段**默认串行**；同一仓库多个代理窗口改同批文件会冲突 → `git worktree` 隔离或严格串行
-- 独立无依赖任务（多 issue）才并行：worktree + 每窗口一个后台会话
+全程不自动 commit、stash、reset、checkout 或覆盖用户改动。工作区不干净时先判断是否与目标重叠；不重叠则保留，重叠则询问。只有用户自己验收并明确说“提交”后才 commit。
 
-## Pitfalls
+## 项目 Skill 沉淀
 
-1. **codex 不在 PATH**（Windows）：必须 `~/.codex/.sandbox-bin/codex.exe`；alias：`alias codex=~/.codex/.sandbox-bin/codex.exe`
-2. **codex 必须 pty=true**；claude -p 不要加 pty
-3. **codex sandbox**：开发用 `--sandbox workspace-write`；gateway/service 环境 bubblewrap 报错改用 `--sandbox danger-full-access`
-4. **claude -p 必带 `--max-turns` 和 `--allowedTools`**；交互式多轮才用 tmux（信任弹窗 Enter，--dangerously-skip-permissions 弹窗 Down+Enter）
-5. **绝不要自动 commit**（用户铁律）：代理提示词里明确写"不要 commit"；阶段验证用 `git status`/`git diff` 而非 git log
-6. **hermes kanban**：`boards rm` 不支持 `--yes`（直接 rm 即归档）；`boards switch` 切板；任务 id 形如 t_xxxxxxxx；completed 任务 list 显示 ✓
-7. **验证自报**：代理说完成≠完成，必须读文件/跑测试核实
-8. **窗口饥饿**：逐个 wait 完成再起下一个
-9. **技能沉淀 + 看板更新别跳过**：用户工作流核心环节，每阶段必做
+L1 不沉淀。L2-Lite 默认不沉淀。L2-Full/L3 只有产生稳定、可复用的项目知识、命令、架构约定或非平凡 Pitfall 时才创建/更新 `<repo>-dev`；不得保存凭据、内部敏感内容或短期进度。
 
-## Verification
+## 完成检查
 
-- W1：docs/design.md 存在且完整；看板 W1 done
-- W2：`git status` 有改动且**未提交**；看板 W2 done
-- W3：docs/review.md 存在，无阻断级问题；看板 W3 done
-- W4：测试命令全绿；看板 W4 done
-- 看板：PROGRESS.md 与 hermes kanban 状态一致，均可查看
-- 沉淀：skill_manage 成功，skill_view 可读；进度简报已给用户
-- **git 状态：工作区有未提交改动，等用户验证后指令提交**
+- 分级有证据，流程没有超过允许上限。
+- W1 方案与审查修复均通过人工确认门。
+- 开发过程中的范围/技术决策没有被代理自主决定。
+- diff 聚焦且未覆盖用户工作。
+- 测试范围与风险匹配，结果由 Hermes 实际核实。
+- 工作区保持未提交，等待用户验收。

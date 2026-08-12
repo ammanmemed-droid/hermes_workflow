@@ -1,0 +1,6 @@
+interface:
+  display_name: "后端项目开发与交付"
+  short_description: "按风险分级处理后端项目的小型修改、标准开发与高风险交付"
+  default_prompt: "使用 $backend-project-delivery 按风险选择最小必要流程；局部修改快速完成，高风险升级先征求确认。"
+policy:
+  allow_implicit_invocation: true

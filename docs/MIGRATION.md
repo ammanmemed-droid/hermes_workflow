@@ -1,6 +1,6 @@
 # 换电脑迁移手册
 
-> Hermes + Codex/Claude Code 四阶段流水线工作流的换机恢复指南
+> Hermes + Codex/Claude Code 分级开发工作流的换机恢复指南
 > 恢复耗时约 10 分钟。备份仓库：https://github.com/ammanmemed-droid/hermes_workflow.git
 
 ## 恢复步骤
@@ -40,7 +40,28 @@ export ANTHROPIC_BASE_URL="https://api.deepseek.com/anthropic"
 git clone https://github.com/ammanmemed-droid/hermes_workflow.git
 cd hermes_workflow
 cp -r skills/ memories/ kanban/ "$LOCALAPPDATA/hermes/"   # Windows
+mkdir -p ~/.codex/skills
+cp codex/AGENTS.md ~/.codex/AGENTS.md
+cp -r codex/skills/* ~/.codex/skills/
 # macOS/Linux 用：cp -r skills/ memories/ kanban/ ~/.hermes/
+```
+
+### 第 4.5 步：恢复 Superpowers 与 OpenSpec
+
+```bash
+# Superpowers 插件（Codex 侧）：把备份的插件包放回缓存
+mkdir -p ~/.codex/plugins/cache
+cp -r codex/plugins/superpowers-marketplace ~/.codex/plugins/cache/
+# 然后在 ~/.codex/config.toml 启用 marketplace 与插件（凭据字段重新填写）：
+#   [plugins."superpowers@superpowers-marketplace"]  enabled = true
+#   [marketplaces.superpowers-marketplace]  last_updated = "..."
+
+# Hermes 侧：备份的 skills/ 已含 superpowers/ 与 openspec/ 分类，无需额外操作
+
+# OpenSpec CLI（全局）
+npm install -g @fission-ai/openspec@latest
+# 新项目初始化（生成 openspec/ + .hermes/skills 官方技能）：
+openspec init --tools hermes --no-animation
 ```
 
 ### 第 5 步：重启 Hermes 并验证
@@ -48,16 +69,16 @@ cp -r skills/ memories/ kanban/ "$LOCALAPPDATA/hermes/"   # Windows
 1. 关闭并重新打开 Hermes（让技能/记忆生效）
 2. 新会话输入：
 
-> 「用 codex-pipeline 跑 XX 需求，项目在 D:\projects\xxx」
+> 「帮我修改 XX，项目在 D:\projects\xxx」
 
-看到 W1 Codex 方案窗口启动 + 看板更新 = 恢复成功 ✅
+看到任务先被判断为 L1 / L2-Lite / L2-Full / L3；小改动不启动四阶段 = 恢复成功 ✅
 
 ## 注意事项
 
 | 事项 | 说明 |
 |---|---|
 | **登录凭证不进仓库** | 仓库里只有技能/记忆/看板，没有 auth.json（.gitignore 已排除）。Codex / Claude 登录必须在新电脑重做（第 3 步） |
-| **codex 路径差异** | 本机 codex 在 `~/.codex/.sandbox-bin/codex.exe`（不在 PATH）。新电脑若用 npm 装的（PATH 里有），运行时 Hermes 会自动 `which codex` 适配，无需手动改技能 |
+| **Codex 版本** | 使用 npm 稳定版并确保 `codex` 在 PATH；不要使用旧 `~/.codex/.sandbox-bin/codex.exe` alpha |
 | **备份要保持新鲜** | 改了技能后对 Hermes 说「更新工作流备份」，即重跑 `cp` 三个目录 + `git push` |
 | **旧项目看板** | kanban 历史已备份；换机后旧项目若继续开发，看板数据直接可用 |
 
@@ -78,4 +99,4 @@ cd ~/hermes_workflow && git add -A && git commit -m "backup update" && git push
 | 新会话不认 codex-pipeline | 检查 `$LOCALAPPDATA/hermes/skills/autonomous-ai-agents/codex-pipeline/` 是否存在；不存在则重跑第 4 步 |
 | 推送 GitHub 超时 | 亚太网络瞬时抖动，重试；或加 `-c http.lowSpeedLimit=0 -c http.lowSpeedTime=999` |
 | claude 提示未登录 | 重跑第 3 步的 export + `claude auth status --text` 检查 |
-| codex 不在 PATH | 用全路径 `~/.codex/.sandbox-bin/codex.exe` 或 `alias codex=~/.codex/.sandbox-bin/codex.exe` |
+| codex 不在 PATH | 重新执行 `npm install -g @openai/codex`，确认 `codex --version` 可用 |
