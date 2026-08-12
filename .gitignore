@@ -1,0 +1,20 @@
+# secrets — never commit
+auth.json
+*.auth.json
+.env
+.env.*
+*.lock
+
+# hermes runtime state (not workflow assets)
+state.db*
+sessions/
+logs/
+cache/
+*.log
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# keep kanban + memories + skills
+!memories/MEMORY.md
