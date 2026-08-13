@@ -1,6 +1,6 @@
 ---
 name: codex-pipeline
-description: "Use when orchestrating tiered backend development with Codex and Claude."
+description: "Tiered Codex+Claude dev pipeline: plan→code→review→test."
 version: 2.0.0
 author: Hermes Agent
 license: MIT

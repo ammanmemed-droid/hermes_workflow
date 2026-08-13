@@ -1,6 +1,6 @@
 ---
 name: backend-project-delivery
-description: Use when Codex 在后端仓库中开发、修改、调试、接手、稳定化、审计、优化或交付代码与配置，包括 prefix 或命名调整、服务发现、API、业务行为、外部集成、数据迁移及生产变更。
+description: "后端仓库开发分级路由：任务分级→最小流程→授权门。"
 ---
 
 # 后端项目开发与交付
